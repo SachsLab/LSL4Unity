@@ -14,6 +14,28 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
         protected int expectedChannels;
 
+        protected double[] timestamps;
+
+		void Start()
+		{
+			var resolver = FindObjectOfType<Resolver>();
+
+			LSLStreamInfoWrapper streamInfo;
+			bool isAvailable = resolver.IsStreamAvailable(StreamName, StreamType, out streamInfo);
+
+			if(isAvailable){
+				// use it immediately
+				this.AStreamIsFound(streamInfo);
+			}else
+			{
+				// register listener dynamically for the event which is expected later....
+				resolver.onStreamFound.AddListener(this.AStreamIsFound);
+				resolver.onStreamLost.AddListener (this.AStreamGotLost);
+			}
+
+			StartImpl ();
+		}
+
         /// <summary>
         /// Callback method for the Resolver gets called each time the resolver found a stream
         /// </summary>
@@ -23,7 +45,7 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
             if (!isTheExpected(stream))
                 return;
 
-            inlet = new LSL.liblsl.StreamInlet(stream.Item);
+            inlet = new LSL.liblsl.StreamInlet(stream.Item, 1, 1);
             expectedChannels = stream.ChannelCount;
 
             OnStreamAvailable();
@@ -45,10 +67,28 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
         private bool isTheExpected(LSLStreamInfoWrapper stream)
         {
-            return StreamName.Equals(stream.Name);
+            bool result = false;
+            if (StreamName.Length > 0 && StreamType.Length > 0)
+            {
+                // If both StreamName and StreamType are provided then both must match.
+                result |= (StreamName.Equals(stream.Name) && StreamType.Equals(stream.Type));
+            }
+            else if (StreamName.Length > 0)
+            {
+                result |= StreamName.Equals(stream.Name);
+            }
+            else if (StreamType.Length > 0)
+            {
+                result |= StreamType.Equals(stream.Type);
+            }
+            return result;
         }
 
+		protected abstract void StartImpl();
+
         protected abstract void pullSamples();
+
+        protected abstract void pullChunk();
 
         protected virtual void OnStreamAvailable()
         {
@@ -63,24 +103,19 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
         protected float[] sample;
 
+        protected float[,] chunk;
+
         protected override void pullSamples()
         {
             sample = new float[expectedChannels];
 
             try
             {
-                double lastTimeStamp = inlet.pull_sample(sample, 0.0f);
-
-                if (lastTimeStamp != 0.0)
+                double lastTimeStamp;
+                // pull as long samples are available
+                while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
                 {
-                    // do not miss the first one found
                     Process(sample, lastTimeStamp);
-                    // pull as long samples are available
-                    while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
-                    {
-                        Process(sample, lastTimeStamp);
-                    }
-
                 }
             }
             catch (ArgumentException aex)
@@ -90,6 +125,18 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
                 Debug.LogException(aex, this);
             }
 
+        }
+
+        protected override void pullChunk()
+        {
+            int nSamples = inlet.samples_available();
+            if (nSamples > 0)
+            {
+                chunk = new float[expectedChannels, nSamples];
+                timestamps = new double[nSamples];
+                int nSampReturned = inlet.pull_chunk(chunk, timestamps);
+            }
+            
         }
     }
 
@@ -105,18 +152,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
             try
             {
-                double lastTimeStamp = inlet.pull_sample(sample, 0.0f);
-
-                if (lastTimeStamp != 0.0)
+                double lastTimeStamp;
+                // pull as long samples are available
+                while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
                 {
-                    // do not miss the first one found
                     Process(sample, lastTimeStamp);
-                    // pull as long samples are available
-                    while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
-                    {
-                        Process(sample, lastTimeStamp);
-                    }
-
                 }
             }
             catch (ArgumentException aex)
@@ -125,6 +165,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
                 this.enabled = false;
                 Debug.LogException(aex, this);
             }
+
+        }
+
+        protected override void pullChunk()
+        {
 
         }
     }
@@ -141,18 +186,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
             try
             {
-                double lastTimeStamp = inlet.pull_sample(sample, 0.0f);
-
-                if (lastTimeStamp != 0.0)
+                double lastTimeStamp;
+                // pull as long samples are available
+                while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
                 {
-                    // do not miss the first one found
                     Process(sample, lastTimeStamp);
-                    // pull as long samples are available
-                    while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
-                    {
-                        Process(sample, lastTimeStamp);
-                    }
-
                 }
             }
             catch (ArgumentException aex)
@@ -161,6 +199,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
                 this.enabled = false;
                 Debug.LogException(aex, this);
             }
+
+        }
+
+        protected override void pullChunk()
+        {
 
         }
     }
@@ -177,18 +220,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
             try
             {
-                double lastTimeStamp = inlet.pull_sample(sample, 0.0f);
-
-                if (lastTimeStamp != 0.0)
+                double lastTimeStamp;
+                // pull as long samples are available
+                while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
                 {
-                    // do not miss the first one found
                     Process(sample, lastTimeStamp);
-                    // pull as long samples are available
-                    while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
-                    {
-                        Process(sample, lastTimeStamp);
-                    }
-
                 }
             }
             catch (ArgumentException aex)
@@ -197,6 +233,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
                 this.enabled = false;
                 Debug.LogException(aex, this);
             }
+
+        }
+
+        protected override void pullChunk()
+        {
 
         }
     }
@@ -213,18 +254,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
             try
             {
-                double lastTimeStamp = inlet.pull_sample(sample, 0.0f);
-
-                if (lastTimeStamp != 0.0)
+                double lastTimeStamp;
+                // pull as long samples are available
+                while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
                 {
-                    // do not miss the first one found
                     Process(sample, lastTimeStamp);
-                    // pull as long samples are available
-                    while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
-                    {
-                        Process(sample, lastTimeStamp);
-                    }
-
                 }
             }
             catch (ArgumentException aex)
@@ -233,6 +267,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
                 this.enabled = false;
                 Debug.LogException(aex, this);
             }
+
+        }
+
+        protected override void pullChunk()
+        {
 
         }
     }
@@ -249,18 +288,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 
             try
             {
-                double lastTimeStamp = inlet.pull_sample(sample, 0.0f);
-
-                if (lastTimeStamp != 0.0)
+                double lastTimeStamp;
+                // pull as long samples are available
+                while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
                 {
-                    // do not miss the first one found
                     Process(sample, lastTimeStamp);
-                    // pull as long samples are available
-                    while ((lastTimeStamp = inlet.pull_sample(sample, 0.0f)) != 0)
-                    {
-                        Process(sample, lastTimeStamp);
-                    }
-
                 }
             }
             catch (ArgumentException aex)
@@ -269,6 +301,11 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
                 this.enabled = false;
                 Debug.LogException(aex, this);
             }
+
+        }
+
+        protected override void pullChunk()
+        {
 
         }
     }

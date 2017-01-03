@@ -45,6 +45,9 @@ namespace Assets.LSL4Unity.Scripts.Examples {
             StartCoroutine(continuouslyPull());
         }
 
+		protected override void StartImpl(){
+		}
+
         private IEnumerator continuouslyPull()
         {
             do

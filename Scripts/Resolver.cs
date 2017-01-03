@@ -26,6 +26,22 @@ namespace Assets.LSL4Unity.Scripts
         public StreamEvent onStreamFound = new StreamEvent();
 
         public StreamEvent onStreamLost = new StreamEvent();
+
+		public bool IsStreamAvailable(String StreamName, String StreamType, out LSLStreamInfoWrapper streamInfo)
+		{
+			bool skipName = StreamName.Length == 0;
+			bool skipType = StreamType.Length == 0;
+			foreach (LSLStreamInfoWrapper infowrap in knownStreams) {
+				bool nameOk = skipName || infowrap.Name.Equals(StreamName);
+				bool typeOk = skipType || infowrap.Type.Equals (StreamType);
+				if (nameOk && typeOk) {
+					streamInfo = infowrap;
+					return true;
+				}
+			}
+			streamInfo = null;
+			return false;
+		}
         
         // Use this for initialization
         void Start() {
@@ -41,6 +57,8 @@ namespace Assets.LSL4Unity.Scripts
             {
                 var results = resolver.results();
                 
+                //If any stream in knownStreams is no longer in results,
+                //trigger onStreamLost and remove it from cache.
                 foreach (var item in knownStreams)
                 {
                     if (!results.Any(r => r.name().Equals(item.Name)))
@@ -49,11 +67,12 @@ namespace Assets.LSL4Unity.Scripts
                             onStreamLost.Invoke(item);
                     }
                 }
-
-                // remove lost streams from cache
                 knownStreams.RemoveAll(s => !results.Any(r => r.name().Equals(s.Name)));
 
-                // add new found streams to the cache
+                //TODO: if any new objects are recently registered,
+                // we need to trigger their onStreamFound events with old streams.
+
+                // add new found streams to the cache and trigger listener onStreamFound events.
                 foreach (var item in results)
                 {
                     if(!knownStreams.Any(s => s.Name == item.name())){
@@ -63,8 +82,7 @@ namespace Assets.LSL4Unity.Scripts
                         var newStreamInfo = new LSLStreamInfoWrapper(item);
                         knownStreams.Add(newStreamInfo);
 
-                        if (onStreamFound.GetPersistentEventCount() > 0) 
-                            onStreamFound.Invoke(newStreamInfo);
+                        onStreamFound.Invoke(newStreamInfo);
                     }
                 }
 
