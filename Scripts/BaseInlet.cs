@@ -19,22 +19,27 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
 		void Start()
 		{
 			var resolver = FindObjectOfType<Resolver>();
-
-			LSLStreamInfoWrapper streamInfo;
-			bool isAvailable = resolver.IsStreamAvailable(StreamName, StreamType, out streamInfo);
-
-			if(isAvailable){
-				// use it immediately
-				this.AStreamIsFound(streamInfo);
-			}else
-			{
-				// register listener dynamically for the event which is expected later....
-				resolver.onStreamFound.AddListener(this.AStreamIsFound);
-				resolver.onStreamLost.AddListener (this.AStreamGotLost);
-			}
+            if (resolver != null)
+            {
+                LSLStreamInfoWrapper streamInfo;
+                bool isAvailable = resolver.IsStreamAvailable(StreamName, StreamType, out streamInfo);
+                if (isAvailable)
+                {
+                    // use it immediately
+                    this.AStreamIsFound(streamInfo);
+                }
+                else
+                {
+                    // register listener dynamically for the event which is expected later....
+                    resolver.onStreamFound.AddListener(this.AStreamIsFound);
+                    resolver.onStreamLost.AddListener(this.AStreamGotLost);
+                }
+            }
 
 			StartImpl ();
 		}
+
+        protected virtual void StartImpl() { }
 
         /// <summary>
         /// Callback method for the Resolver gets called each time the resolver found a stream
@@ -83,9 +88,7 @@ namespace Assets.LSL4Unity.Scripts.AbstractInlets
             }
             return result;
         }
-
-		protected abstract void StartImpl();
-
+        
         protected abstract void pullSamples();
 
         protected abstract void pullChunk();
